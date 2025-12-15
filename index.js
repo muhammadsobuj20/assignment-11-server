@@ -205,7 +205,42 @@ const verifyToken = async (req, res, next) => {
     });
 
     // Get all approved tuitions (public)
-   
+    app.get("/tuitions", async (req, res) => {
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        location,
+        class: className,
+        subject,
+        sort = "latest",
+      } = req.query;
+
+      let query = { status: "approved" };
+
+      if (search) query.$text = { $search: search };
+      if (location) query.location = new RegExp(location, "i");
+      if (className) query.class = className;
+      if (subject) query.subject = new RegExp(subject, "i");
+
+      const sortObj = sort === "oldest" ? { createdAt: 1 } : { createdAt: -1 };
+
+      const result = await tuitionsCollection
+        .find(query)
+        .sort(sortObj)
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit))
+        .toArray();
+
+      const total = await tuitionsCollection.countDocuments(query);
+
+      res.send({
+        tuitions: result,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+      });
+    });
 
     app.get("/tuitions", async (req, res) => {
       const email = req.query.email;

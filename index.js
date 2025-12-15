@@ -522,7 +522,45 @@ app.patch("/payment-success", async (req, res) => {
     };
 
     // Public: Get tutors (pagination + filters + search) 
-   
+    app.get("/tutors", async (req, res) => {
+      try {
+        const { page, limit, skip } = parsePagination(req);
+        const {
+          subject,
+          district,
+          class: className,
+          q: search,
+          sort,
+        } = req.query;
+
+        const query = {};
+        if (subject) query.subjectTags = { $in: [subject] };
+        if (district) query.district = new RegExp(district, "i");
+        if (className) query.classLevels = className;
+        if (search) query.$text = { $search: search };
+
+        // only approved tutors
+        query.approved = true;
+
+        const sortObj = sort === "rating" ? { rating: -1 } : { createdAt: -1 };
+
+        const [total, tutors] = await Promise.all([
+          tutorsCollection.countDocuments(query),
+          tutorsCollection
+            .find(query)
+            .project({ bio: 0, availability: 0 }) // omit heavy fields for list
+            .sort(sortObj)
+            .skip(skip)
+            .limit(limit)
+            .toArray(),
+        ]);
+
+        res.send({ tutors, total, page, limit });
+      } catch (err) {
+        console.error("GET /tutors Error:", err);
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
     // Public: Get single tutor profile
     app.get("/tutors/:id", async (req, res) => {

@@ -158,7 +158,10 @@ const verifyToken = async (req, res, next) => {
       }
     });
 
-   
+    app.get("/users/role", verifyToken, async (req, res) => {
+      const user = await usersCollection.findOne({ email: req.user.email });
+      res.send({ role: user?.role || "student" });
+    });
 
     app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();

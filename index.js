@@ -51,7 +51,6 @@ async function run() {
     const bookingsCollection = db.collection("bookings");
     const messagesCollection = db.collection("messages");
 
-
     // JWT & Firebase Verify Middleware
 
     const verifyToken = async (req, res, next) => {
@@ -486,6 +485,34 @@ async function run() {
         .sort({ paidAt: -1 })
         .toArray();
       res.send(result);
+    });
+
+
+    app.get("/payments/history", async (req, res) => {
+      const email = req.query.email;
+      const payments = await paymentsCollection.find({ email }).toArray();
+      res.send(payments);
+    });
+
+    // Public: Get payment history by email (student or tutor) — used by dashboards that pass email as query param
+    app.get("/payments/history", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email)
+          return res
+            .status(400)
+            .send({ message: "Query parameter 'email' is required" });
+
+        const result = await paymentsCollection
+          .find({ $or: [{ studentEmail: email }, { tutorEmail: email }] })
+          .sort({ paidAt: -1 })
+          .toArray();
+
+        res.send(result);
+      } catch (err) {
+        console.error("GET /payments/history Error:", err);
+        res.status(500).send({ message: "Server error" });
+      }
     });
 
     // Admin: Reports & Analytics
